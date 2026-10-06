@@ -60,7 +60,7 @@ The Docker image includes the same executable and listens on container port
 8080. Mount a persistent directory for the database and its encryption key:
 
 ```sh
-docker build -t miner-fleet .
+docker build --build-arg VERSION=1.0.0 -t miner-fleet .
 mkdir -p data
 docker run --rm --name miner-fleet --user "$(id -u):$(id -g)" \
   -p 127.0.0.1:8080:8080 -v "$PWD/data:/data" miner-fleet

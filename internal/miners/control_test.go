@@ -3,10 +3,7 @@ package miners
 import (
 	"context"
 	"encoding/json"
-	"github.com/gorilla/websocket"
 	"math"
-	"github.com/yorgof/miner-fleet/internal/alert"
-	"github.com/yorgof/miner-fleet/internal/store"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/yorgof/miner-fleet/internal/alert"
+	"github.com/yorgof/miner-fleet/internal/store"
 )
 
 func TestNerdControlsUseInstalledFirmwareContract(t *testing.T) {

@@ -42,7 +42,12 @@ jobs:
           cache-dependency-path: go.sum
       - name: Check formatting and modules
         run: |
-          test -z "$(gofmt -l $(git ls-files '*.go'))"
+          unformatted="$(git ls-files -z '*.go' | xargs -0 gofmt -l)"
+          if [[ -n "$unformatted" ]]; then
+            printf 'Run gofmt on:\n%s\n' "$unformatted" >&2
+            exit 1
+          fi
+          go mod download
           go mod verify
       - name: Static checks
         run: go vet ./...
@@ -64,6 +69,32 @@ jobs:
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
           "$(go env GOPATH)/bin/actionlint"
+      - name: Build and smoke-test container
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          docker build --tag miner-fleet:ci .
+          mkdir -p .work/docker-smoke-data
+          docker run --detach --name miner-fleet-smoke \
+            --user "$(id -u):$(id -g)" \
+            --volume "$PWD/.work/docker-smoke-data:/data" miner-fleet:ci
+          trap 'docker rm --force miner-fleet-smoke >/dev/null' EXIT
+          ready=false
+          for attempt in {1..30}; do
+            if docker exec miner-fleet-smoke /miner-fleet -healthcheck; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            docker logs miner-fleet-smoke
+            exit 1
+          fi
+          test "$(docker exec miner-fleet-smoke /miner-fleet -version)" = 'Miner Fleet dev'
+          docker cp miner-fleet-smoke:/licenses/LICENSE .work/docker-LICENSE
+          docker cp miner-fleet-smoke:/licenses/THIRD_PARTY_NOTICES.md .work/docker-NOTICES
+          cmp LICENSE .work/docker-LICENSE
+          cmp THIRD_PARTY_NOTICES.md .work/docker-NOTICES
 
   bundles:
     name: Build release bundles

@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"github.com/yorgof/miner-fleet/internal/alert"
-	"github.com/yorgof/miner-fleet/internal/miners"
-	"github.com/yorgof/miner-fleet/internal/store"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +12,10 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/yorgof/miner-fleet/internal/alert"
+	"github.com/yorgof/miner-fleet/internal/miners"
+	"github.com/yorgof/miner-fleet/internal/store"
 )
 
 func TestEnergyExcludesMissingPowerAndOutages(t *testing.T) {

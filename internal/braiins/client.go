@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"github.com/yorgof/miner-fleet/internal/sanitize"
 	"net"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/yorgof/miner-fleet/internal/sanitize"
 )
 
 type Client struct{ addr string }

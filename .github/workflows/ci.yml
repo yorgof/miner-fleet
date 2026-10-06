@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test ${{ matrix.os }}/${{ matrix.arch }}
@@ -84,6 +88,7 @@ jobs:
               ready=true
               break
             fi
+            printf 'Waiting for container (%s/30)\n' "$attempt"
             sleep 1
           done
           if [[ "$ready" != true ]]; then

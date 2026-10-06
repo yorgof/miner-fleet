@@ -1,0 +1,24 @@
+{{define "header"}}
+<header>
+  <h1><a href="/" style="color:inherit;text-decoration:none">Miner Fleet</a></h1>
+  <nav><a class="button secondary" href="/fleet">Fleet settings</a> <a class="button" href="/miners/new">Add miner</a></nav>
+</header>
+{{end}}
+
+{{define "page"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} - Miner Fleet</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  {{template "header" .}}
+  <main>{{.Body}}</main>
+</body>
+</html>
+{{end}}

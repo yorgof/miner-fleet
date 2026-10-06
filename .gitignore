@@ -1,0 +1,15 @@
+/dist/
+/.work/
+/miner-fleet
+/miner-fleet.exe
+*.db
+*.db-*
+*.db.key
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+.env
+.env.*
+!.env.example
+/data/

@@ -1,0 +1,27 @@
+{{define "newForm"}}
+<p><a class="back" href="/">&larr; All miners</a></p>
+<div class="panel" style="max-width:420px">
+  <h3 style="margin-top:0">Add a miner</h3>
+  <form method="post" action="/miners">
+    <label><span>Name</span>
+      <input type="text" name="name" placeholder="bitaxe1" required>
+    </label>
+    <label><span>Kind</span>
+      <select name="kind">
+        <option value="axeos">Bitaxe / NerdQAxe++ (AxeOS)</option>
+        <option value="avalon_cgminer">Avalon Nano 3 (cgminer)</option>
+        <option value="cyd">CYD miner</option>
+        <option value="braiins">Antminer S9 / BraiinsOS+</option>
+      </select>
+    </label>
+    <label><span>Host / IP</span>
+      <input type="text" name="host" placeholder="192.0.2.50" required>
+      <small>For CYD, use the IPv4 address shown on its screen.</small>
+    </label>
+    <label><span>Port</span>
+      <input type="number" name="port" placeholder="80 HTTP, 4028 Avalon / Braiins">
+    </label>
+    <button class="button" type="submit">Add</button>
+  </form>
+</div>
+{{end}}

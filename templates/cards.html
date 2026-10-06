@@ -1,0 +1,39 @@
+{{define "cards"}}
+<div id="dashboard" hx-get="/partials/cards" hx-trigger="every 10s" hx-swap="outerHTML">
+  <div class="summary">
+    <div class="summary-stat"><span class="summary-value">{{fmtHashrate .Summary.TotalHashrateGHs}}</span><span class="summary-label">Fleet hashrate</span></div>
+    <div class="summary-stat"><span class="summary-value">{{fmtPower .Summary.TotalPowerW}}</span><span class="summary-label">{{if .Summary.Estimated}}Power incl. estimates{{else}}Reported power{{end}}</span><small>{{.Summary.PowerCount}} miners reporting power</small></div>
+    <div class="summary-stat"><span class="summary-value">{{.Summary.OnlineCount}}/{{.Summary.TotalCount}}</span><span class="summary-label">Reachable</span></div>
+    <div class="summary-stat"><span class="summary-value {{if .Summary.HealthCount}}warning{{end}}">{{.Summary.HealthCount}}</span><span class="summary-label">Health incidents</span></div>
+    <div class="summary-stat"><span class="summary-value {{if .Summary.TotalBlocksFound}}good{{end}}">{{.Summary.TotalBlocksFound}}</span><span class="summary-label">Device-reported blocks</span></div>
+  </div>
+  {{if not .Miners}}<p class="empty">Your fleet starts here. <a href="/miners/new">Add a miner</a> to begin monitoring.</p>{{end}}
+  <div class="grid">
+    {{range .Miners}}
+    <a class="card {{if .Health}}attention{{end}}" href="/miners/{{.Miner.ID}}">
+      <div class="card-title"><span class="dot {{if .Stats.Ok}}online{{else}}offline{{end}}"></span><strong>{{.Miner.Name}}</strong><span class="kind">{{kindLabel .Miner.Kind}}</span></div>
+      <div class="card-meta"><span>{{.Stats.Model}}</span><span class="badge {{if .Health}}warning{{end}}">{{.Status}}</span></div>
+      <div class="card-rate">{{if .Stats.Ok}}{{fmtHashrate .Stats.HashrateGHs}}{{else}}—{{end}}</div>
+      {{if .Stats.Ok}}
+      {{if ne .Miner.Kind "cyd"}}
+      <div class="stat-row"><span class="label">Temperature</span><span>{{fmtTemp .Stats.TempC}}{{if .Stats.VRTempC}} <small>VR {{fmtTemp .Stats.VRTempC}}</small>{{end}}</span></div>
+      <div class="stat-row"><span class="label">Power{{if eq .Miner.Kind "braiins"}} (estimate){{end}}</span><span>{{fmtPower .Stats.PowerW}}</span></div>
+      {{if .Stats.Efficiency}}<div class="stat-row"><span class="label">Efficiency</span><span>{{printf "%.1f J/TH" .Stats.Efficiency}}</span></div>{{end}}
+      <div class="stat-row"><span class="label">Fan</span><span>{{fmtFan .Stats.FanPercent .Stats.FanRPM}}{{if .Stats.Fan2RPM}}<small>Fan 2: {{fmtFan .Stats.Fan2Percent .Stats.Fan2RPM}}</small>{{end}}</span></div>
+      {{end}}
+      {{if .Stats.PoolKnown}}<div class="stat-row"><span class="label">Pool</span><span class="{{if not .Stats.PoolConnected}}warning{{end}}">{{if .Stats.PoolConnected}}online{{else}}offline{{end}}</span></div>{{end}}
+      <div class="stat-row"><span class="label">Shares</span><span>{{.Stats.SharesAccepted}} accepted <small>/ {{.Stats.SharesRejected}} rejected</small></span></div>
+      <div class="stat-row"><span class="label">Rejected</span><span>{{printf "%.2f%%" .Stats.RejectPercent}}</span></div>
+      <div class="stat-row"><span class="label">Best difficulty</span><span>{{fmtDiff .Stats.BestDiff}}</span></div>
+      <div class="stat-row"><span class="label">Uptime</span><span>{{fmtDuration .Stats.UptimeS}}</span></div>
+      {{if .Stats.FrequencyMHz}}<div class="stat-row"><span class="label">ASIC settings</span><span>{{printf "%.0f MHz" .Stats.FrequencyMHz}}{{if .Stats.CoreVoltageMV}}<small>{{printf "%.0f mV" .Stats.CoreVoltageMV}}</small>{{end}}</span></div>{{end}}
+      {{if .Stats.WifiRSSI}}<div class="stat-row"><span class="label">Wi-Fi</span><span>{{.Stats.WifiRSSI}} dBm</span></div>{{end}}
+      {{if .Stats.Version}}<div class="stat-row"><span class="label">Firmware</span><span class="truncate">{{.Stats.Version}}</span></div>{{end}}
+      {{else}}<p class="stat-error">{{if .Stats.Error}}{{.Stats.Error}}{{else}}Waiting for first poll{{end}}</p>{{if .Stats.LastSuccess}}<small>Last successful poll: {{fmtTime .Stats.LastSuccess}}</small>{{end}}{{end}}
+      {{range .Health}}<p class="incident">{{.Message}}</p>{{end}}
+      <div class="card-footer">{{.Miner.Host}} <span>{{fmtTime .Stats.SampledAt}}</span></div>
+    </a>
+    {{end}}
+  </div>
+</div>
+{{end}}

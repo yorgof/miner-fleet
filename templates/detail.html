@@ -1,0 +1,73 @@
+{{define "minerTelemetry"}}
+<div id="miner-telemetry" hx-get="/partials/miner/{{.Miner.ID}}" hx-trigger="every 10s" hx-swap="outerHTML">
+  <div class="panel">
+    <div class="card-title"><span class="dot {{if .Stats.Ok}}online{{else}}offline{{end}}"></span><h2>{{.Miner.Name}}</h2><span class="kind">{{kindLabel .Miner.Kind}}</span></div>
+    <p class="muted">{{.Miner.Host}}{{if .Miner.Port}}:{{.Miner.Port}}{{end}} · {{fmtTime .Stats.SampledAt}} · {{.Stats.Model}}</p>
+    {{range .Health}}<p class="incident">{{.Message}}</p>{{end}}
+    {{if .Stats.Ok}}
+    <div class="metric-grid">
+      <div><span class="metric">{{fmtHashrate .Stats.HashrateGHs}}</span><small>Hashrate{{if .Stats.Paused}} · paused{{end}}</small></div>
+      {{if ne .Miner.Kind "cyd"}}<div><span class="metric">{{fmtTemp .Stats.TempC}}</span><small>Chip temperature</small></div><div><span class="metric">{{fmtPower .Stats.PowerW}}</span><small>Power{{if eq .Miner.Kind "braiins"}} estimate{{end}}</small></div>{{end}}
+      <div><span class="metric">{{printf "%.2f%%" .Stats.RejectPercent}}</span><small>Rejected shares since boot</small></div>
+    </div>
+    <table class="stats">
+      <tr><td>Shares</td><td>{{.Stats.SharesAccepted}} accepted / {{.Stats.SharesRejected}} rejected</td></tr>
+      <tr><td>Best difficulty</td><td>{{fmtDiff .Stats.BestDiff}}</td></tr>
+      {{if and .Stats.BestSessionDiff (ne .Miner.Kind "cyd")}}<tr><td>Best session difficulty</td><td>{{fmtDiff .Stats.BestSessionDiff}}</td></tr>{{end}}
+      {{if .Stats.PoolHost}}<tr><td>Pool</td><td>{{.Stats.PoolHost}}{{if .Stats.PoolKnown}} ({{if .Stats.PoolConnected}}online{{else}}offline{{end}}){{end}}</td></tr>{{end}}
+      {{if .Stats.PoolDiff}}<tr><td>Pool difficulty</td><td>{{fmtDiff .Stats.PoolDiff}}</td></tr>{{end}}
+      {{if .Stats.Version}}<tr><td>Firmware</td><td>{{.Stats.Version}}</td></tr>{{end}}
+      <tr><td>Uptime</td><td>{{fmtDuration .Stats.UptimeS}}</td></tr>
+      {{if .Stats.WifiRSSI}}<tr><td>Wi-Fi signal</td><td>{{.Stats.WifiRSSI}} dBm</td></tr>{{end}}
+      {{if .Stats.Efficiency}}<tr><td>Efficiency</td><td>{{printf "%.1f J/TH" .Stats.Efficiency}}{{if eq .Miner.Kind "braiins"}} (estimated power){{end}}</td></tr>{{end}}
+      {{if .Stats.VoltageMV}}<tr><td>Supply voltage</td><td>{{printf "%.0f mV" .Stats.VoltageMV}}</td></tr>{{end}}
+      {{if .Stats.VRTempC}}<tr><td>Voltage regulator temperature</td><td>{{fmtTemp .Stats.VRTempC}}</td></tr>{{end}}
+      {{if .Stats.FanRPM}}<tr><td>Fan</td><td>{{fmtFan .Stats.FanPercent .Stats.FanRPM}}</td></tr>{{end}}
+    </table>
+    {{else}}<p class="stat-error">{{if .Stats.Error}}{{.Stats.Error}}{{else}}Waiting for first poll{{end}}</p>{{end}}
+  </div>
+  <div class="panel"><h3>Last 24 hours</h3><p class="muted">{{.Rows}} polls recorded. Charts summarize successful readings; outages remain recorded in history.</p><h4>Hashrate</h4>{{.HashrateSpark}}
+    {{if ne .Miner.Kind "cyd"}}<h4>Chip temperature</h4>{{.TempSpark}}{{if .Stats.PowerW}}<h4>Power</h4>{{.PowerSpark}}{{end}}{{end}}
+    {{if .Energy.Hours}}<div class="metric-grid energy"><div><span class="metric">{{printf "%.3f kWh" .Energy.KWh}}</span><small>Observed energy{{if .Energy.Estimated}} estimate{{end}}</small></div><div><span class="metric">{{.Settings.Currency}} {{printf "%.2f" .Energy.Cost}}</span><small>Cost at {{printf "%.4f" .Settings.Rate}} / kWh</small></div><div><span class="metric">{{printf "%.1f%%" .Energy.Coverage}}</span><small>24-hour data coverage</small></div></div>{{end}}
+  </div>
+  <div class="panel"><div class="section-title"><h3>All available data</h3><a class="button secondary" href="/miners/{{.Miner.ID}}/data">Download JSON</a></div><p class="muted">All fields reported by this firmware, including nested board, fan, pool and tuning data. Passwords and authentication secrets are redacted.</p>
+    <input class="data-filter" type="search" placeholder="Filter fields, e.g. temperature, pool or frequency" aria-label="Filter telemetry">
+    {{range .Groups}}<details class="data-group" {{if ne .Name "Firmware statistics"}}open{{end}}><summary>{{.Name}}</summary><table class="stats telemetry">{{range .Rows}}<tr><td>{{.Name}}</td><td>{{.Value}}</td></tr>{{end}}</table></details>{{end}}
+    {{if .ControlNote}}<p class="muted">{{.ControlNote}}</p>{{end}}
+  </div>
+</div>
+{{end}}
+
+{{define "minerBody"}}
+<p><a class="back" href="/">&larr; All miners</a> · <a href="{{.DeviceURL}}" target="_blank" rel="noopener noreferrer">Open device interface</a></p>
+{{template "minerTelemetry" .}}
+<div class="panel"><h3>Controls</h3><p class="muted">Controls follow the installed firmware. Blank settings keep their current values. Forms remain unchanged while telemetry refreshes.</p>
+  {{$miner := .Miner}}{{$hasCredentials := .HasCredentials}}
+  <div class="control-grid">
+    {{range .Controls}}
+    <details class="control"><summary>{{.Label}}{{if .Auth}} <span class="kind">web login</span>{{end}}</summary><p class="muted">{{.Help}}</p>
+      {{if and .Auth (not $hasCredentials)}}<p class="warning">Save connection credentials below to use this control.</p>{{end}}
+      <form class="action-form form-grid" action="/miners/{{$miner.ID}}/control/{{.ID}}{{if .Download}}?download=1{{end}}" method="post" {{if .Upload}}enctype="multipart/form-data"{{end}} data-confirm="{{if .Download}}{{else}}{{.Label}} on {{$miner.Name}}?{{end}}" {{if .Download}}data-download="1"{{end}}>
+        {{range .Fields}}<label><span>{{.Label}}</span>{{if eq .Type "select"}}<select name="{{.Key}}" {{if .Required}}required{{end}}><option value="">Keep current</option>{{$value:=.Value}}{{range .Options}}<option value="{{.}}" {{if eq . $value}}selected{{end}}>{{.}}</option>{{end}}</select>{{else if eq .Type "json"}}<textarea name="{{.Key}}" rows="4" spellcheck="false" {{if .Required}}required{{end}}>{{.Value}}</textarea>{{else}}<input type="{{.Type}}" name="{{.Key}}" value="{{.Value}}" {{if .Required}}required{{end}} {{if eq .Type "number"}}min="{{.Min}}" max="{{.Max}}" step="any"{{end}} {{if eq .Type "password"}}autocomplete="new-password"{{end}}>{{end}}</label>{{end}}
+        {{if .Upload}}<label><span>OTA binary for this device</span><input type="file" name="firmware" accept=".bin" required></label>{{end}}
+        {{if .Profile}}<label><span>Save as profile instead of applying (optional)</span><input type="text" name="save_profile" maxlength="100" placeholder="e.g. Quiet evening"></label>{{end}}
+        <div class="form-actions"><button class="button" type="submit">{{if .Download}}Download{{else if .Upload}}Upload{{else}}Apply / save{{end}}</button></div><output class="action-result" aria-live="polite"></output>
+      </form>
+    </details>
+    {{else}}<p class="muted">This adapter exposes monitoring only. Use the device interface for its authenticated settings.</p>{{end}}
+  </div>
+</div>
+<div class="panel"><h3>Saved profiles</h3><p class="muted">Save settings from any configurable control above. Use these profiles for quiet hours, heater power levels or pool configurations.</p>
+  {{range .Profiles}}<div class="profile-row"><div><strong>{{.Name}}</strong><small>{{.Operation}}</small></div><form class="action-form inline" method="post" action="/profiles/{{.ID}}/apply" data-confirm="Apply {{.Name}}?"><button class="button" type="submit">Apply</button><output class="action-result"></output></form><form class="action-form inline" method="post" action="/profiles/{{.ID}}/delete" data-confirm="Remove this profile and its schedules?"><button class="button secondary" type="submit">Remove</button><output class="action-result"></output></form></div>{{else}}<p class="muted">No profiles saved yet.</p>{{end}}<p><a href="/fleet">Manage schedules</a></p>
+</div>
+<div class="panel"><h3>Connection credentials</h3><p class="muted">Credentials are encrypted on disk and excluded from configuration exports. Leave the password blank to keep the saved value.{{if .HasCredentials}} Credentials are saved.{{end}}</p>
+  <form class="action-form form-grid" method="post" action="/miners/{{.Miner.ID}}/credentials"><label><span>Web username (Braiins)</span><input name="username" autocomplete="username" placeholder="root"></label><label><span>Web password (Braiins or CYD)</span><input type="password" name="password" autocomplete="new-password"></label><label><span>Web port</span><input type="number" name="web_port" min="1" max="65535" value="80"></label><label><span>NerdQAxe one-time code (creates a 24-hour session)</span><input name="otp" autocomplete="one-time-code" maxlength="6"></label><label class="check"><input type="checkbox" name="clear" value="1"> Clear saved credentials</label><div class="form-actions"><button class="button" type="submit">Save credentials</button></div><output class="action-result"></output></form>
+</div>
+<div class="panel"><h3>Miner registration</h3><form class="action-form form-grid" method="post" action="/miners/{{.Miner.ID}}/registration"><label><span>Name</span><input name="name" value="{{.Miner.Name}}" required></label><label><span>Address</span><input name="host" value="{{.Miner.Host}}" required></label><label><span>API port (0 uses default)</span><input type="number" name="port" value="{{.Miner.Port}}" min="0" max="65535"></label><label class="check"><input type="checkbox" name="enabled" value="1" {{if .Miner.Enabled}}checked{{end}}> Poll this miner</label><label class="check"><input type="checkbox" name="muted" value="1" {{if .Muted}}checked{{end}}> Expected offline / mute health alerts</label><div class="form-actions"><button class="button" type="submit">Save registration</button></div><output class="action-result"></output></form></div>
+<div class="panel"><h3>Change and health history</h3>{{template "events" .Events}}</div>
+<div class="panel"><h3>Remove miner</h3><button class="button danger" hx-delete="/miners/{{.Miner.ID}}" hx-confirm="Remove {{.Miner.Name}}? This deletes its history.">Delete miner</button></div>
+{{end}}
+
+{{define "events"}}
+<div class="table-scroll"><table class="stats"><thead><tr><th>Time</th><th>Type / operation</th><th>Result</th></tr></thead><tbody>{{range .}}<tr><td>{{.TS}}</td><td>{{.Category}} · {{.Operation}}</td><td class="{{if not .Success}}warning{{end}}">{{.Detail}}</td></tr>{{else}}<tr><td colspan="3">No events recorded yet.</td></tr>{{end}}</tbody></table></div>
+{{end}}

@@ -7,6 +7,13 @@ Python, external database or cloud account is required to run it.
 
 ## Run on a desktop
 
+Download the archive for your OS and CPU architecture from
+[Releases](https://github.com/yorgof/miner-fleet/releases), verify its checksum
+against `SHA256SUMS`, and extract it. `darwin` means macOS, `amd64` means
+Intel/AMD 64-bit, and `arm64` includes Apple Silicon and 64-bit ARM computers.
+Each archive includes the executable, this README, the MIT license and
+third-party notices. macOS/Windows binaries are currently unsigned.
+
 Start the executable and open <http://127.0.0.1:8080>. Add your miners using
 **Add miner**. The app starts with no registered devices or example data.
 Keep it running for polling, alerts and schedules to work.
@@ -35,10 +42,17 @@ CGO_ENABLED=0 go build -trimpath -o miner-fleet .
 On Windows, set `CGO_ENABLED=0` in your shell before `go build`.
 `scripts/build-release.sh` builds Linux, macOS and Windows binaries for
 amd64 and arm64. An optional argument selects the output directory;
-default `dist/` is ignored by Git. Cross-compilation is checked; native
-launch testing on macOS and Windows remains a release task. Distribute the
-[third-party notices](THIRD_PARTY_NOTICES.md) with binaries. The project
-license still needs to be selected before a public release.
+default `dist/` is ignored by Git. Set `MINER_FLEET_VERSION=1.0.0` to embed a
+release version; otherwise builds identify themselves as `dev`. Run
+`miner-fleet -version` to check a binary. Distribute the [MIT license](LICENSE)
+and [third-party notices](THIRD_PARTY_NOTICES.md) with binaries.
+
+[CI](https://github.com/yorgof/miner-fleet/actions/workflows/ci.yml) runs tests,
+static checks and native executable startup checks on all six targets, with
+the race detector where Go supports it. Stable `vMAJOR.MINOR.PATCH` tags run
+the same checks and publish packaged binaries plus `SHA256SUMS` through the
+[release workflow](.github/workflows/release.yml). Interactive installation,
+desktop packaging/signing and real-device writes need separate validation.
 
 ## Run with Docker
 
@@ -160,6 +174,7 @@ enabled. Topic URLs and tokens are private. `-alert-test` sends a test.
 | `-retention` | `2160h` | Sample/event retention, minimum 1h |
 | `-healthcheck` | off | GET local `/healthz` and exit |
 | `-alert-test` | off | Send a configured ntfy test and exit |
+| `-version` | off | Print the build version and exit without opening a database |
 
 The `internal/axeos`, `cyd`, `braiins`, and `avalon` packages implement device
 protocols. `internal/miners` normalizes readings and serializes controls per
@@ -170,3 +185,11 @@ there is no frontend compilation or runtime CDN dependency.
 
 Run `go test -race ./...` and `go vet ./...`. Tests use loopback mock devices
 and temporary databases; they never need real miners or credentials.
+
+## License and contributions
+
+Application code is [MIT licensed](LICENSE). Bundled dependencies retain
+their licenses in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). No miner
+firmware is distributed with the app. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for development/release steps and [SECURITY.md](SECURITY.md) for reporting
+vulnerabilities and the local access/encryption model.

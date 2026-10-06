@@ -33,6 +33,9 @@ var templatesFS embed.FS
 //go:embed static/*
 var staticFS embed.FS
 
+// version is set by the release build; source builds identify themselves as dev.
+var version = "dev"
+
 func main() {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -46,7 +49,12 @@ func main() {
 		"check /healthz on the local server and exit 0/1, instead of running the server (used as the Docker HEALTHCHECK, since the distroless image has no shell/wget)")
 	alertTest := flag.Bool("alert-test", false,
 		"send one test ntfy notification and exit")
+	showVersion := flag.Bool("version", false, "print the application version and exit")
 	flag.Parse()
+	if *showVersion {
+		fmt.Printf("Miner Fleet %s\n", version)
+		return
+	}
 	if *pollInterval < time.Second || *retention < time.Hour {
 		log.Fatal("poll interval must be at least one second and retention at least one hour")
 	}
@@ -122,11 +130,9 @@ func main() {
 }
 
 // alertConfigFromEnv reads alert settings from the environment rather than
-// flags: this repo's convention (see compose/proxy) is that secret-ish
-// values go through a gitignored .env file and `environment:` in compose,
-// not a command-line arg. The ntfy topic URL is treated the same way even
-// though it's not strictly a password - anyone who has it can publish to or
-// read the topic.
+// flags, to keep secrets out of command-line arguments. An ntfy topic URL
+// is private because anyone who knows it may be able to publish to or read
+// the topic.
 func alertConfigFromEnv() alert.Config {
 	threshold, err := strconv.ParseFloat(os.Getenv("MINER_FLEET_DIFF_THRESHOLD"), 64)
 	if err != nil {

@@ -1,6 +1,8 @@
 # Third-party notices
 
-The application license has not yet been selected. These notices cover bundled dependencies, independently of that choice. Keep this file with binary distributions.
+Miner Fleet application code is licensed under MIT; see LICENSE. Bundled
+dependencies retain their own licenses below. Keep both files with binary
+distributions.
 
 No miner firmware is bundled; the application communicates with devices over their APIs.
 

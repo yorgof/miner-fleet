@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    env:
+      CGO_ENABLED: '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, os: linux, arch: amd64, race: true, suffix: ''}
+          - {runner: ubuntu-24.04-arm, os: linux, arch: arm64, race: true, suffix: ''}
+          - {runner: macos-15-intel, os: darwin, arch: amd64, race: true, suffix: ''}
+          - {runner: macos-15, os: darwin, arch: arm64, race: true, suffix: ''}
+          - {runner: windows-2025, os: windows, arch: amd64, race: true, suffix: '.exe'}
+          # Go's race detector does not support windows/arm64.
+          - {runner: windows-11-arm, os: windows, arch: arm64, race: false, suffix: '.exe'}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache-dependency-path: go.sum
+      - name: Check formatting and modules
+        run: |
+          test -z "$(gofmt -l $(git ls-files '*.go'))"
+          go mod verify
+      - name: Static checks
+        run: go vet ./...
+      - name: Unit and integration tests
+        run: go test -timeout 5m ./...
+      - name: Race detector
+        if: matrix.race
+        env:
+          CGO_ENABLED: '1'
+        run: go test -race -timeout 5m ./...
+      - name: Build standalone native executable
+        env:
+          CGO_ENABLED: '0'
+        run: go build -trimpath -ldflags='-s -w -X main.version=dev' -o '.work/miner-fleet${{ matrix.suffix }}' .
+      - name: Native executable smoke test
+        run: python scripts/smoke-test.py '.work/miner-fleet${{ matrix.suffix }}'
+      - name: Validate GitHub Actions workflows
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint"
+
+  bundles:
+    name: Build release bundles
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache-dependency-path: go.sum
+      - name: Build and package six targets
+        shell: bash
+        run: |
+          release_version=dev
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            release_version="${GITHUB_REF_NAME#v}"
+          fi
+          MINER_FLEET_VERSION="$release_version" scripts/build-release.sh dist/bin
+          python scripts/package-release.py dist/bin dist/release "$release_version"
+          (cd dist/release && sha256sum --check SHA256SUMS)
+          python scripts/smoke-test.py dist/bin/miner-fleet-linux-amd64 --version "$release_version"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-bundles
+          path: dist/release/
+          if-no-files-found: error
+          retention-days: 7

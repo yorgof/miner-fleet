@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -50,7 +51,11 @@ func TestEncryptedStateBackupAndScheduleClaim(t *testing.T) {
 		}
 	}
 	info, err := os.Stat(path + ".key")
-	if err != nil || info.Mode().Perm() != 0600 {
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Windows does not expose Unix owner/group permission bits through Chmod.
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatalf("key permissions: %v %v", info, err)
 	}
 	if err = st.SaveSchedule(ctx, Schedule{MinerID: id, Name: "night", Timezone: "UTC", Days: "1", At: "22:00", Operation: "autotuning", ProfileID: p[0].ID, Enabled: true}); err != nil {

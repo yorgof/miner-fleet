@@ -1,0 +1,2 @@
+# Keep Go formatting and build scripts consistent on Windows checkouts.
+* text=auto eol=lf
